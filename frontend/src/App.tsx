@@ -3,8 +3,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "./components/ui/button";
 import { useState } from "react";
 
+import toast, { Toaster } from "react-hot-toast";
+
 function App() {
     const [lock, setLock] = useState(false);
+    const [recording, setRecording] = useState(false);
 
     const handleLock = () => {
         if (lock) {
@@ -12,6 +15,25 @@ function App() {
             return;
         }
         setLock(true);
+    };
+
+    const handleRecording = async () => {
+        if (recording) {
+            setRecording(false);
+            return;
+        }
+        // Check if the browser supports the required APIs
+        if (
+            !window.AudioContext ||
+            !window.MediaStreamAudioSourceNode ||
+            !window.AudioWorkletNode
+        ) {
+            toast.error("Your browser does not support the required APIs");
+            return;
+        }
+        setRecording(true);
+
+        // Request access to the user's microphone
     };
 
     return (
@@ -29,11 +51,19 @@ function App() {
                             <Button onClick={handleLock}>
                                 {lock ? "Unlock Text" : "Lock Text"}
                             </Button>
-                            <Button variant={"outline"}>Start Spelling</Button>
+                            <Button
+                                onClick={handleRecording}
+                                variant={"outline"}
+                            >
+                                {recording
+                                    ? "Stop Recording"
+                                    : "Start Recording"}
+                            </Button>
                         </div>
                     </div>
                 </div>
             </div>
+            <Toaster />
         </div>
     );
 }
