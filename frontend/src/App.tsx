@@ -1,63 +1,41 @@
 import "./App.css";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "./components/ui/button";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import toast, { Toaster } from "react-hot-toast";
+import useRecorder from "./hooks/useRecorder";
 
 function App() {
-    const [lock, setLock] = useState(false);
-    const [recording, setRecording] = useState(false);
+    const [record, setRecord] = useState(false);
+    const ref = useRef<HTMLCanvasElement>(null);
+    useRecorder({ canvas: ref, record });
 
-    const handleLock = () => {
-        if (lock) {
-            setLock(false);
+    const handleRecord = () => {
+        if (record) {
+            setRecord(false);
             return;
         }
-        setLock(true);
-    };
-
-    const handleRecording = async () => {
-        if (recording) {
-            setRecording(false);
-            return;
-        }
-        // Check if the browser supports the required APIs
-        if (
-            !window.AudioContext ||
-            !window.MediaStreamAudioSourceNode ||
-            !window.AudioWorkletNode
-        ) {
-            toast.error("Your browser does not support the required APIs");
-            return;
-        }
-        setRecording(true);
-
-        // Request access to the user's microphone
+        setRecord(true);
     };
 
     return (
         <div className="h-screen w-screen bg-slate-100 flex justify-center">
             <div className="container">
                 <div className="flex flex-col items-center">
-                    <span className="my-6 font-semibold text-lg">Speller</span>
+                    <span className="my-6 font-semibold text-lg">
+                        Web dictaphone
+                    </span>
                     <div className="w-[400px] sm:w-[500px] md:w-[600px] lg:w-[800px]">
-                        <Textarea
-                            placeholder="Paste some text here"
-                            className="resize-none  h-[200px]"
-                            disabled={lock}
-                        />
+                        <canvas
+                            ref={ref}
+                            className="block bg-gray-300 w-full h-[60px]"
+                        ></canvas>
                         <div className="w-full my-6 flex justify-around">
-                            <Button onClick={handleLock}>
-                                {lock ? "Unlock Text" : "Lock Text"}
-                            </Button>
                             <Button
-                                onClick={handleRecording}
-                                variant={"outline"}
+                                onClick={handleRecord}
+                                variant={record ? "destructive" : "default"}
                             >
-                                {recording
-                                    ? "Stop Recording"
-                                    : "Start Recording"}
+                                {record ? "Stop" : "Record"}
                             </Button>
                         </div>
                     </div>
