@@ -58,7 +58,7 @@ function App() {
                         <canvas
                             ref={canvasRef}
                             height="60px"
-                            className="block bg-gray-300 w-full"
+                            className="block w-full"
                         ></canvas>
                         <div className="w-full my-6 flex justify-around">
                             <Button
