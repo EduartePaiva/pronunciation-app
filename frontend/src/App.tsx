@@ -1,14 +1,15 @@
 import "./App.css";
 import { Button } from "./components/ui/button";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import toast, { Toaster } from "react-hot-toast";
 import useRecorder from "./hooks/useRecorder";
 
 function App() {
     const [record, setRecord] = useState(false);
-    const ref = useRef<HTMLCanvasElement>(null);
-    useRecorder({ canvas: ref, record });
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasParent = useRef<HTMLDivElement>(null);
+    useRecorder({ canvas: canvasRef, record });
 
     const handleRecord = () => {
         if (record) {
@@ -18,6 +19,19 @@ function App() {
         setRecord(true);
     };
 
+    useEffect(() => {
+        if (canvasRef.current === null || canvasParent.current === null) {
+            return;
+        }
+        window.onresize = function () {
+            if (canvasRef.current === null || canvasParent.current === null) {
+                return;
+            }
+            canvasRef.current.width = canvasParent.current.offsetWidth;
+        };
+        canvasRef.current.width = canvasParent.current.offsetWidth;
+    }, [canvasRef, canvasParent]);
+
     return (
         <div className="h-screen w-screen bg-slate-100 flex justify-center">
             <div className="container">
@@ -25,10 +39,14 @@ function App() {
                     <span className="my-6 font-semibold text-lg">
                         Web dictaphone
                     </span>
-                    <div className="w-[400px] sm:w-[500px] md:w-[600px] lg:w-[800px]">
+                    <div
+                        ref={canvasParent}
+                        className="w-[400px] sm:w-[500px] md:w-[600px] lg:w-[800px]"
+                    >
                         <canvas
-                            ref={ref}
-                            className="block bg-gray-300 w-full h-[60px]"
+                            ref={canvasRef}
+                            height="60px"
+                            className="block bg-gray-300 w-full"
                         ></canvas>
                         <div className="w-full my-6 flex justify-around">
                             <Button
