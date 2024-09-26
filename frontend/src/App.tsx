@@ -9,14 +9,26 @@ function App() {
     const [record, setRecord] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasParent = useRef<HTMLDivElement>(null);
-    useRecorder({ canvas: canvasRef, record });
+    const [savedSounds, setSavedSounds] = useState<string[]>([]);
+    const useRecorderCB = (blob: Blob) => {
+        const _audioURL = window.URL.createObjectURL(blob);
+        setSavedSounds((prev) => [...prev, _audioURL]);
+    };
+
+    const { startRecording, stopRecording } = useRecorder({
+        canvas: canvasRef,
+        stopCallback: useRecorderCB,
+    });
 
     const handleRecord = () => {
         if (record) {
             setRecord(false);
+            stopRecording();
             return;
         }
+        toast("started recording");
         setRecord(true);
+        startRecording();
     };
 
     useEffect(() => {
@@ -56,6 +68,12 @@ function App() {
                                 {record ? "Stop" : "Record"}
                             </Button>
                         </div>
+                        {/* sound clips */}
+                        <section>
+                            {savedSounds.map((sound, index) => (
+                                <audio key={index} controls src={sound}></audio>
+                            ))}
+                        </section>
                     </div>
                 </div>
             </div>
