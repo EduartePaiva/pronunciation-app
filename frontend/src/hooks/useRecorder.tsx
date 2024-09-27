@@ -2,7 +2,7 @@ import { useRef } from "react";
 
 interface useRecorderProps {
     canvas: React.RefObject<HTMLCanvasElement>;
-    stopCallback: (blob: Blob) => void;
+    stopCallback: (blob: Blob, fileFormat: string) => void;
 }
 
 export default function useRecorder({
@@ -80,7 +80,7 @@ export default function useRecorder({
                     const blob = new Blob(chunks.current, {
                         type: mr.mimeType,
                     });
-                    stopCallback(blob);
+                    stopCallback(blob, mr.mimeType.split("/")[1].split(";")[0]);
                     chunks.current = [];
                     console.log("recorder stopped");
                 };

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import toast, { Toaster } from "react-hot-toast";
 import useRecorder from "./hooks/useRecorder";
-import { convertBlobAudioToBlobWav } from "./utils/utils";
+// import { convertBlobAudioToBlobWav } from "./utils/utils";
 
 function App() {
     const [lock, setLock] = useState(false);
@@ -13,13 +13,14 @@ function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasParent = useRef<HTMLDivElement>(null);
     const [curAudio, setCurAudio] = useState("");
-    const curBlob = useRef<Blob | null>(null);
+    const curBlob = useRef<{ blob: Blob; fileFormat: string } | null>(null);
     const [userText, setUserText] = useState("");
 
-    const useRecorderCB = (blob: Blob) => {
+    const useRecorderCB = (blob: Blob, fileFormat: string) => {
+        console.log(fileFormat);
         window.URL.revokeObjectURL(curAudio);
         const _audioURL = window.URL.createObjectURL(blob);
-        curBlob.current = blob;
+        curBlob.current = { blob, fileFormat };
         setCurAudio(_audioURL);
     };
     const { startRecording, stopRecording } = useRecorder({
@@ -53,19 +54,22 @@ function App() {
         }
         toast("sending message");
         try {
-            const wavBlob = await convertBlobAudioToBlobWav(curBlob.current);
+            // const wavBlob = await convertBlobAudioToBlobWav(curBlob.current);
 
             const formData = new FormData();
-            formData.append("audio", wavBlob, "audio.wav");
+            formData.append(
+                "audio",
+                curBlob.current.blob,
+                `audio.${curBlob.current.fileFormat}`,
+            );
             formData.set("text", userText);
 
             const result = await fetch("http://localhost:5000", {
                 method: "POST",
                 body: formData,
-                mode: "no-cors",
             });
             toast.success("it worked");
-            console.log(await result.json());
+            console.log(await result.text());
         } catch (err) {
             if (err instanceof Error) {
                 toast.error(err.message);
