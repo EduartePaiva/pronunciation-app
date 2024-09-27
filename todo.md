@@ -1,0 +1,1 @@
+[_] - comparison algorithm need to be build to compare the two phoneme strings
