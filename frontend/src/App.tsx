@@ -14,6 +14,7 @@ function App() {
     const canvasParent = useRef<HTMLDivElement>(null);
     const [curAudio, setCurAudio] = useState("");
     const curBlob = useRef<Blob | null>(null);
+    const [userText, setUserText] = useState("");
 
     const useRecorderCB = (blob: Blob) => {
         window.URL.revokeObjectURL(curAudio);
@@ -50,16 +51,27 @@ function App() {
             toast.error("nothing was recorded yet!");
             return;
         }
-        const wavBlob = await convertBlobAudioToBlobWav(curBlob.current);
+        toast("sending message");
+        try {
+            const wavBlob = await convertBlobAudioToBlobWav(curBlob.current);
 
-        const formData = new FormData();
-        formData.append("audio", wavBlob, "audio.wav");
-        formData.set("text", "this is the user text");
+            const formData = new FormData();
+            formData.append("audio", wavBlob, "audio.wav");
+            formData.set("text", userText);
 
-        const result = await fetch("https://your-backend-url.com/upload", {
-            method: "POST",
-            body: formData,
-        });
+            const result = await fetch("http://localhost:5000", {
+                method: "POST",
+                body: formData,
+                mode: "no-cors",
+            });
+            toast.success("it worked");
+            console.log(await result.json());
+        } catch (err) {
+            if (err instanceof Error) {
+                toast.error(err.message);
+                console.error(err);
+            }
+        }
     };
 
     useEffect(() => {
@@ -88,6 +100,7 @@ function App() {
                             placeholder="Paste some text here"
                             className="resize-none  h-[200px]"
                             disabled={lock}
+                            onChange={(e) => setUserText(e.target.value)}
                         />
                         <div className="w-full my-6 flex justify-around">
                             <Button onClick={handleLock}>
