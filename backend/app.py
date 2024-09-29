@@ -4,6 +4,7 @@ import json
 
 from phoneme.speech_to_phoneme import speech_to_phoneme
 from phoneme.text_to_phoneme import text_to_phoneme
+from utils.levenshtein_distance import comparing_things
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
@@ -27,7 +28,8 @@ def post_index():
     # f.save(f.filename)
     data = {
         "speech_phone":speech_phone,
-        "text_phone": text_phone
+        "text_phone": text_phone,
+        "right_words": comparing_things(speech_phone, text_phone)
     }
     json_data = json.dumps(data, ensure_ascii=False).encode('utf8')
     response = Response(json_data,201)
