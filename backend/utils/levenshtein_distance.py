@@ -1,4 +1,4 @@
-def comparing_things(word1: str, word2: str) -> list[bool]:
+def comparing_things(word1: str, word2: str) -> list[float]:
     """ word1 is the phoneme, word2 is the transcript
     """
     word2_cl = word2.replace('|', " ")
@@ -53,14 +53,14 @@ def comparing_things(word1: str, word2: str) -> list[bool]:
     new_res: list[bool] = []
     res_i = 0
     for word in word2.split('|'):
-        is_right = True
+        equal_letters = 0
+        word_letters = 0
         for phone in word.split(" "):
             if res_i < len(res) and phone == res[res_i]:
                 res_i += 1
-                continue
-            is_right = False
-        
-        new_res.append(is_right)
+                equal_letters+=1
+            word_letters+=1
+        new_res.append(equal_letters/word_letters)
     
     # this testcase is that \/, let's try only adding
     # if word 1 is < word 2 I can only add " " or substitute
