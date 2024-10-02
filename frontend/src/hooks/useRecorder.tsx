@@ -2,15 +2,14 @@ import { useRef } from "react";
 
 interface useRecorderProps {
     canvas: React.RefObject<HTMLCanvasElement>;
-    stopCallback: (blob: Blob, fileFormat: string) => void;
+    sendCallback: (blob: BlobEvent) => void;
 }
 
 export default function useRecorder({
     canvas,
-    stopCallback,
+    sendCallback,
 }: useRecorderProps) {
     const mediaRecorder = useRef<null | MediaRecorder>(null);
-    const chunks = useRef<BlobPart[]>([]);
     const audioCtx = useRef<null | AudioContext>(null);
     const canvasCtx = useRef<CanvasRenderingContext2D | null>(null);
     const allowCanvasDraw = useRef(false);
@@ -73,21 +72,7 @@ export default function useRecorder({
                     audio: true,
                 });
                 const mr = new MediaRecorder(stream);
-                mr.onstop = function () {
-                    console.log(
-                        "Last data to read (after MediaRecorder.stop() called).",
-                    );
-                    const blob = new Blob(chunks.current, {
-                        type: mr.mimeType,
-                    });
-                    stopCallback(blob, mr.mimeType.split("/")[1].split(";")[0]);
-                    chunks.current = [];
-                    console.log("recorder stopped");
-                };
-
-                mr.ondataavailable = function (e) {
-                    chunks.current.push(e.data);
-                };
+                mr.ondataavailable = sendCallback;
                 mediaRecorder.current = mr;
             }
             if (canvas.current) {
@@ -113,7 +98,7 @@ export default function useRecorder({
                 );
             }
 
-            mediaRecorder.current.start();
+            mediaRecorder.current.start(250);
             console.log(mediaRecorder.current.state);
             console.log("Recorder started.");
         } catch (err) {
@@ -121,10 +106,18 @@ export default function useRecorder({
         }
     };
     const stopRecording = () => {
-        mediaRecorder.current?.stop();
         allowCanvasDraw.current = false;
-        console.log(mediaRecorder.current?.state);
-        console.log("Recorder stopped.");
+        if (
+            mediaRecorder.current &&
+            mediaRecorder.current.state !== "inactive"
+        ) {
+            mediaRecorder.current.stop();
+            console.log(mediaRecorder.current.state);
+            console.log("Recorder stopped.");
+            mediaRecorder.current.stream
+                .getTracks()
+                .forEach((track) => track.stop());
+        }
     };
 
     return { startRecording, stopRecording };

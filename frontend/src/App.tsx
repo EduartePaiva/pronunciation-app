@@ -9,6 +9,9 @@ import { cn } from "./lib/utils";
 import { Slider } from "./components/ui/slider";
 // import { convertBlobAudioToBlobWav } from "./utils/utils";
 
+import io from "socket.io-client";
+import type { TypedSocket } from "@/types/socketio.type";
+
 interface UserText {
     words_sequence: string;
     result_sequence: number;
@@ -21,21 +24,68 @@ function App() {
     const [recording, setRecording] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasParent = useRef<HTMLDivElement>(null);
-    const [curAudio, setCurAudio] = useState("");
     const curBlob = useRef<{ blob: Blob; fileFormat: string } | null>(null);
     const [userText, setUserText] = useState<UserText[]>([]);
     const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
 
-    const useRecorderCB = (blob: Blob, fileFormat: string) => {
-        console.log(fileFormat);
-        window.URL.revokeObjectURL(curAudio);
-        const _audioURL = window.URL.createObjectURL(blob);
-        curBlob.current = { blob, fileFormat };
-        setCurAudio(_audioURL);
+    //real time part
+    const socketRef = useRef<TypedSocket | null>(null);
+
+    useEffect(() => {
+        // Initialize socket connection
+        socketRef.current = io(import.meta.env.VITE_BACKEND_URL);
+
+        // Set up socket event listeners
+        socketRef.current.on("connect", () => {
+            console.log("Connected to server");
+        });
+
+        socketRef.current.on("pronunciation_feedback", (data) => {
+            if (data.length == 0) {
+                return;
+            }
+            setUserText((prev) => {
+                data.forEach((bkData) => {
+                    if (
+                        prev[bkData.word_index].result_sequence <
+                        bkData.word_score
+                    ) {
+                        prev[bkData.word_index].result_sequence =
+                            bkData.word_score;
+                    }
+                });
+                return [...prev];
+            });
+        });
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
+    }, []);
+
+    const handleTextAreaOnChange = (
+        e: React.ChangeEvent<HTMLTextAreaElement>,
+    ) => {
+        const userText: UserText[] = e.target.value
+            .split(" ")
+            .map((words_sequence) => ({
+                result_sequence: -1,
+                words_sequence,
+            }));
+
+        setUserText(userText);
+    };
+
+    const useRecorderCB = async (event: BlobEvent) => {
+        console.log("sending array buffer audio");
+        if (event.data.size > 0 && socketRef.current?.connected) {
+            const arrayBuffer = await event.data.arrayBuffer();
+            socketRef.current.emit("audio_stream", arrayBuffer);
+        }
     };
     const { startRecording, stopRecording } = useRecorder({
         canvas: canvasRef,
-        stopCallback: useRecorderCB,
+        sendCallback: useRecorderCB,
     });
 
     const handleLock = () => {
@@ -65,7 +115,6 @@ function App() {
         toast("sending message");
         try {
             setLock(true);
-            // const wavBlob = await convertBlobAudioToBlobWav(curBlob.current);
 
             const formData = new FormData();
             formData.append(
@@ -78,7 +127,7 @@ function App() {
                 userText.map((x) => x.words_sequence).join(" "),
             );
 
-            const result = await fetch("http://localhost:5000", {
+            const result = await fetch(import.meta.env.VITE_BACKEND_URL, {
                 method: "POST",
                 body: formData,
             });
@@ -133,16 +182,7 @@ function App() {
                                 value={userText
                                     .map((x) => x.words_sequence)
                                     .join(" ")}
-                                onChange={(e) => {
-                                    const userText: UserText[] = e.target.value
-                                        .split(" ")
-                                        .map((words_sequence) => ({
-                                            result_sequence: -1,
-                                            words_sequence,
-                                        }));
-
-                                    setUserText(userText);
-                                }}
+                                onChange={handleTextAreaOnChange}
                             />
                         )}
 
@@ -198,10 +238,6 @@ function App() {
                             height="60px"
                             className="block w-full"
                         ></canvas>
-                        {/* sound clips */}
-                        <section>
-                            <audio controls src={curAudio}></audio>
-                        </section>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import json
 
 from phoneme.speech_to_phoneme import speech_to_phoneme
@@ -8,6 +9,8 @@ from utils.levenshtein_distance import comparing_things
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app, logger=True, engineio_logger=True)
 
 
 @app.get("/")
@@ -36,3 +39,20 @@ def post_index():
     response.content_type = "application/json"
     
     return  response
+
+@socketio.on('connect')
+def test_connect():
+    emit('my response', {'data': 'Connected'})
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+
+
+@socketio.event
+def my_event(message):
+    emit('my response', {'data': 'got it!'})
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
