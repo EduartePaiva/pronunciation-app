@@ -114,9 +114,6 @@ export default function useRecorder({
             mediaRecorder.current.stop();
             console.log(mediaRecorder.current.state);
             console.log("Recorder stopped.");
-            mediaRecorder.current.stream
-                .getTracks()
-                .forEach((track) => track.stop());
         }
     };
 

@@ -24,7 +24,6 @@ function App() {
     const [recording, setRecording] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasParent = useRef<HTMLDivElement>(null);
-    const curBlob = useRef<{ blob: Blob; fileFormat: string } | null>(null);
     const [userText, setUserText] = useState<UserText[]>([]);
     const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
 
@@ -44,18 +43,19 @@ function App() {
             if (data.length == 0) {
                 return;
             }
-            setUserText((prev) => {
-                data.forEach((bkData) => {
-                    if (
-                        prev[bkData.word_index].result_sequence <
-                        bkData.word_score
-                    ) {
-                        prev[bkData.word_index].result_sequence =
-                            bkData.word_score;
-                    }
-                });
-                return [...prev];
-            });
+            console.log(data);
+            // setUserText((prev) => {
+            //     data.forEach((bkData) => {
+            //         if (
+            //             prev[bkData.word_index].result_sequence <
+            //             bkData.word_score
+            //         ) {
+            //             prev[bkData.word_index].result_sequence =
+            //                 bkData.word_score;
+            //         }
+            //     });
+            //     return [...prev];
+            // });
         });
 
         return () => {
@@ -77,10 +77,10 @@ function App() {
     };
 
     const useRecorderCB = async (event: BlobEvent) => {
-        console.log("sending array buffer audio");
         if (event.data.size > 0 && socketRef.current?.connected) {
-            const arrayBuffer = await event.data.arrayBuffer();
-            socketRef.current.emit("audio_stream", arrayBuffer);
+            // const arrayBuffer = await event.data.arrayBuffer();
+            console.log("sending not array buffer");
+            socketRef.current.emit("audio_stream", event.data);
         }
     };
     const { startRecording, stopRecording } = useRecorder({
@@ -105,51 +105,6 @@ function App() {
         toast("started recording");
         setRecording(true);
         startRecording();
-    };
-
-    const handleSendData = async () => {
-        if (curBlob.current === null) {
-            toast.error("nothing was recorded yet!");
-            return;
-        }
-        toast("sending message");
-        try {
-            setLock(true);
-
-            const formData = new FormData();
-            formData.append(
-                "audio",
-                curBlob.current.blob,
-                `audio.${curBlob.current.fileFormat}`,
-            );
-            formData.set(
-                "text",
-                userText.map((x) => x.words_sequence).join(" "),
-            );
-
-            const result = await fetch(import.meta.env.VITE_BACKEND_URL, {
-                method: "POST",
-                body: formData,
-            });
-            toast.success("it worked");
-            const res = await result.json();
-
-            const right_words = res["right_words"] as number[];
-            const newUserText: UserText[] = [];
-            for (let i = 0; i < userText.length; i++) {
-                const ut: UserText = {
-                    result_sequence: right_words[i],
-                    words_sequence: userText[i].words_sequence,
-                };
-                newUserText.push(ut);
-            }
-            setUserText(newUserText);
-        } catch (err) {
-            if (err instanceof Error) {
-                toast.error(err.message);
-                console.error(err);
-            }
-        }
     };
 
     useEffect(() => {
@@ -219,9 +174,6 @@ function App() {
                         <div className="w-full flex justify-between">
                             <Button onClick={handleLock}>
                                 {lock ? "Unlock Text" : "Lock Text"}
-                            </Button>
-                            <Button variant={"link"} onClick={handleSendData}>
-                                Send audio with text
                             </Button>
                             <Button
                                 onClick={handleRecord}
