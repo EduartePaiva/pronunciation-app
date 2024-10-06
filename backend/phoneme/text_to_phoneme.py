@@ -3,7 +3,7 @@ from phonemizer.separator import Separator
 
 def text_to_phoneme(text:str):
 
-    phn = phonemize(
+    phn: str = phonemize(
         text,
         backend="espeak",
         separator=Separator(phone=" ", word='|', syllable=','),
