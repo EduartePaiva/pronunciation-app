@@ -1,8 +1,10 @@
+from array import array
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import json
 import io
+
 
 from phoneme.speech_to_phoneme import speech_to_phoneme
 from phoneme.text_to_phoneme import text_to_phoneme
@@ -13,7 +15,7 @@ from audio.audio_processor import AudioChuck, AudioChuckSimplified
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True,)
 # logger=True, engineio_logger=True,
 audio_processor = AudioChuckSimplified(socketio)
 
@@ -47,7 +49,7 @@ def post_index():
 
 @socketio.on('connect')
 def test_connect():
-    emit('my response', {'data': 'Connected'})
+    emit('pronunciation_feedback', {'data': 'Connected'})
 
 @socketio.on('disconnect')
 def test_disconnect():
@@ -57,7 +59,8 @@ def test_disconnect():
 @socketio.on('audio_stream')
 def handle_audio_stream(audio_data: bytes):
     print("received audio")
-    audio_processor.add_audio(audio_data)
+    print("audio data: ", audio_data)
+    # audio_processor.add_audio(audio_data)
 
 # @socketio.on('set_text')
 # def handle_set_text(text: str):

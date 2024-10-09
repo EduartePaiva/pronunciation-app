@@ -4,12 +4,12 @@ import { Button } from "./components/ui/button";
 import { useEffect, useRef, useState } from "react";
 
 import toast, { Toaster } from "react-hot-toast";
-import useRecorder from "./hooks/useRecorder";
 import { cn } from "./lib/utils";
 import { Slider } from "./components/ui/slider";
 
 import io from "socket.io-client";
 import type { TypedSocket } from "@/types/socketio.type";
+import useRecorder2 from "./hooks/useRecorderAudioWorklet";
 
 interface UserText {
     words_sequence: string;
@@ -65,6 +65,8 @@ function App() {
     const handleTextAreaOnChange = (
         e: React.ChangeEvent<HTMLTextAreaElement>,
     ) => {
+        console.log(socketRef.current);
+
         const userText: UserText[] = e.target.value
             .split(" ")
             .map((words_sequence) => ({
@@ -75,13 +77,13 @@ function App() {
         setUserText(userText);
     };
 
-    const useRecorderCB = async (data: string) => {
-        if (data.length > 0 && socketRef.current?.connected) {
+    const useRecorderCB = (data: ArrayBuffer) => {
+        if (socketRef.current?.connected) {
+            console.log("callback was executed!");
             socketRef.current.emit("audio_stream", data);
-            // const arrayBuffer = await data.arrayBuffer();
         }
     };
-    const { startRecording, stopRecording } = useRecorder({
+    const { startRecording, stopRecording } = useRecorder2({
         canvas: canvasRef,
         sendCallback: useRecorderCB,
     });

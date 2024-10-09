@@ -1,10 +1,6 @@
 import { blobToBase64 } from "@/utils/utils";
 import { useRef } from "react";
 
-const BUFFER_SIZE = 4096;
-const INPUT_CHANNEL_COUNT = 1;
-const OUTPUT_CHANNEL_COUNT = 1;
-
 interface useRecorderProps {
     canvas: React.RefObject<HTMLCanvasElement>;
     sendCallback: (blob: string) => void;
@@ -18,15 +14,6 @@ export default function useRecorder({
     const audioCtx = useRef<null | AudioContext>(null);
     const canvasCtx = useRef<CanvasRenderingContext2D | null>(null);
     const isRecording = useRef(false);
-    const scriptProcessor = useRef(null);
-
-    function stopRecording2() {
-        isRecording = false;
-        if (scriptProcessor) {
-            scriptProcessor.disconnect();
-            scriptProcessor = null;
-        }
-    }
 
     function visualize(
         stream: MediaStream,
@@ -103,25 +90,6 @@ export default function useRecorder({
                 audioCtx.current = new AudioContext();
             }
 
-            const scriptProcessor = audioCtx.current.createScriptProcessor(
-                BUFFER_SIZE,
-                INPUT_CHANNEL_COUNT,
-                OUTPUT_CHANNEL_COUNT,
-            );
-
-            refStream.current = stream;
-            const recorderRt: RecordRTC = new RecordRTC(stream, {
-                type: "audio",
-                recorderType: RecordRTC.StereoAudioRecorder,
-                mimeType: "audio/wav",
-                timeSlice: 500,
-                desiredSampRate: 16000,
-                numberOfAudioChannels: 1,
-                ondataavailable: handleDataAvailable,
-            });
-
-            recorder.current = recorderRt;
-
             if (canvas.current) {
                 if (canvasCtx.current === null) {
                     const temp = canvas.current.getContext("2d");
@@ -142,8 +110,6 @@ export default function useRecorder({
                     );
                 }
             }
-            recorder.current.startRecording();
-            console.log(recorder.current.getState());
             console.log("Recorder started.");
         } catch (err) {
             console.log("The following error occurred: " + err);
@@ -151,13 +117,6 @@ export default function useRecorder({
     };
     const stopRecording = () => {
         isRecording.current = false;
-        if (recorder.current) {
-            console.log(recorder.current.getState());
-            recorder.current.stopRecording(() => {
-                console.log("stopping");
-            });
-            console.log("Recorder stopped.");
-        }
     };
 
     return { startRecording, stopRecording };

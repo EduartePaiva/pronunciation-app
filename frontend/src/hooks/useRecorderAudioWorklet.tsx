@@ -13,14 +13,16 @@ export default function useRecorder2({
     const audioContext = useRef<AudioContext | null>(null);
     const workletNode = useRef<AudioWorkletNode | null>(null);
     const mediaStream = useRef<MediaStream | null>(null);
+    const canvasCtx = useRef<CanvasRenderingContext2D | null>(null);
+    const isRecording = useRef(false);
 
     function visualize(
-        stream: MediaStream,
+        source: MediaStreamAudioSourceNode,
         audioCtx: AudioContext,
         canvas: HTMLCanvasElement,
         canvasCtx: CanvasRenderingContext2D,
     ) {
-        const source = audioCtx.createMediaStreamSource(stream);
+        isRecording.current = true;
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
         const bufferLength = analyser.frequencyBinCount;
@@ -97,6 +99,8 @@ export default function useRecorder2({
 
     const startRecording = async () => {
         try {
+            await init();
+
             if (audioContext.current === null) {
                 console.log("Init wasn't called, recording can't be called");
                 return;
@@ -118,17 +122,53 @@ export default function useRecorder2({
                     sendCallback(event.data.audioData);
                 }
             };
-
             source.connect(workletNode.current);
             workletNode.current.connect(audioContext.current.destination);
-
             workletNode.current.port.postMessage({ command: "start" });
+
+            // visualize code
+            if (canvas.current === null) {
+                return;
+            }
+            if (canvasCtx.current === null) {
+                const temp = canvas.current.getContext("2d");
+                if (temp === null) {
+                    return;
+                }
+                canvasCtx.current = temp;
+            }
+
+            visualize(
+                source,
+                audioContext.current,
+                canvas.current,
+                canvasCtx.current,
+            );
         } catch (err) {
             console.error("Failed to start recording:", err);
             throw err;
         }
     };
-    const stopRecording = () => {};
+    const stopRecording = () => {
+        isRecording.current = false;
+        if (workletNode.current !== null) {
+            workletNode.current.port.postMessage({ command: "stop" });
+            workletNode.current.disconnect();
+            workletNode.current = null;
+        }
+        if (mediaStream.current !== null) {
+            mediaStream.current.getTracks().forEach((track) => track.stop());
+            mediaStream.current = null;
+        }
+    };
 
-    return { startRecording, stopRecording };
+    const close = () => {
+        stopRecording();
+        if (audioContext.current !== null) {
+            audioContext.current.close();
+            audioContext.current = null;
+        }
+    };
+
+    return { startRecording, stopRecording, close };
 }
