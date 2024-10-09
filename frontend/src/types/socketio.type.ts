@@ -11,6 +11,7 @@ interface ServerToClientEvents {
 
 interface ClientToServerEvents {
     audio_stream: (data: ArrayBuffer) => void;
+    set_frequency: (data: string) => void;
 }
 
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

@@ -7,7 +7,6 @@ import toast, { Toaster } from "react-hot-toast";
 import useRecorder from "./hooks/useRecorder";
 import { cn } from "./lib/utils";
 import { Slider } from "./components/ui/slider";
-// import { convertBlobAudioToBlobWav } from "./utils/utils";
 
 import io from "socket.io-client";
 import type { TypedSocket } from "@/types/socketio.type";
@@ -76,11 +75,10 @@ function App() {
         setUserText(userText);
     };
 
-    const useRecorderCB = async (event: BlobEvent) => {
-        if (event.data.size > 0 && socketRef.current?.connected) {
-            // const arrayBuffer = await event.data.arrayBuffer();
-            console.log("sending not array buffer");
-            socketRef.current.emit("audio_stream", event.data);
+    const useRecorderCB = async (data: string) => {
+        if (data.length > 0 && socketRef.current?.connected) {
+            socketRef.current.emit("audio_stream", data);
+            // const arrayBuffer = await data.arrayBuffer();
         }
     };
     const { startRecording, stopRecording } = useRecorder({

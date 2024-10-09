@@ -1,18 +1,32 @@
+import { blobToBase64 } from "@/utils/utils";
 import { useRef } from "react";
+
+const BUFFER_SIZE = 4096;
+const INPUT_CHANNEL_COUNT = 1;
+const OUTPUT_CHANNEL_COUNT = 1;
 
 interface useRecorderProps {
     canvas: React.RefObject<HTMLCanvasElement>;
-    sendCallback: (blob: BlobEvent) => void;
+    sendCallback: (blob: string) => void;
 }
 
 export default function useRecorder({
     canvas,
     sendCallback,
 }: useRecorderProps) {
-    const mediaRecorder = useRef<null | MediaRecorder>(null);
+    const refStream = useRef<MediaStream | null>(null);
     const audioCtx = useRef<null | AudioContext>(null);
     const canvasCtx = useRef<CanvasRenderingContext2D | null>(null);
-    const allowCanvasDraw = useRef(false);
+    const isRecording = useRef(false);
+    const scriptProcessor = useRef(null);
+
+    function stopRecording2() {
+        isRecording = false;
+        if (scriptProcessor) {
+            scriptProcessor.disconnect();
+            scriptProcessor = null;
+        }
+    }
 
     function visualize(
         stream: MediaStream,
@@ -37,10 +51,12 @@ export default function useRecorder({
             canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
             canvasCtx.lineWidth = 2;
             canvasCtx.strokeStyle = "rgb(0, 0, 0)";
-            if (allowCanvasDraw.current) {
+            if (isRecording.current) {
                 requestAnimationFrame(draw);
             } else {
                 canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+                source.disconnect(analyser);
+                analyser.disconnect();
                 return;
             }
             canvasCtx.beginPath();
@@ -65,16 +81,47 @@ export default function useRecorder({
         }
     }
 
+    const handleDataAvailable = (event: Blob) => {
+        console.log("this executed");
+        if (event.size > 0) {
+            blobToBase64(event).then((b64) => {
+                sendCallback(b64);
+            });
+        }
+    };
+
     const startRecording = async () => {
         try {
-            if (mediaRecorder.current === null) {
+            if (refStream.current === null) {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: true,
                 });
-                const mr = new MediaRecorder(stream);
-                mr.ondataavailable = sendCallback;
-                mediaRecorder.current = mr;
+                refStream.current = stream;
             }
+            //raw visualize
+            if (audioCtx.current === null) {
+                audioCtx.current = new AudioContext();
+            }
+
+            const scriptProcessor = audioCtx.current.createScriptProcessor(
+                BUFFER_SIZE,
+                INPUT_CHANNEL_COUNT,
+                OUTPUT_CHANNEL_COUNT,
+            );
+
+            refStream.current = stream;
+            const recorderRt: RecordRTC = new RecordRTC(stream, {
+                type: "audio",
+                recorderType: RecordRTC.StereoAudioRecorder,
+                mimeType: "audio/wav",
+                timeSlice: 500,
+                desiredSampRate: 16000,
+                numberOfAudioChannels: 1,
+                ondataavailable: handleDataAvailable,
+            });
+
+            recorder.current = recorderRt;
+
             if (canvas.current) {
                 if (canvasCtx.current === null) {
                     const temp = canvas.current.getContext("2d");
@@ -84,35 +131,31 @@ export default function useRecorder({
                     canvasCtx.current = temp;
                 }
 
-                //raw visualize
-                if (audioCtx.current === null) {
-                    audioCtx.current = new AudioContext();
+                console.log(audioCtx.current.sampleRate);
+                isRecording.current = true;
+                if (refStream.current !== null) {
+                    visualize(
+                        refStream.current,
+                        audioCtx.current,
+                        canvas.current,
+                        canvasCtx.current,
+                    );
                 }
-                const stream = mediaRecorder.current.stream;
-                allowCanvasDraw.current = true;
-                visualize(
-                    stream,
-                    audioCtx.current,
-                    canvas.current,
-                    canvasCtx.current,
-                );
             }
-
-            mediaRecorder.current.start(250);
-            console.log(mediaRecorder.current.state);
+            recorder.current.startRecording();
+            console.log(recorder.current.getState());
             console.log("Recorder started.");
         } catch (err) {
             console.log("The following error occurred: " + err);
         }
     };
     const stopRecording = () => {
-        allowCanvasDraw.current = false;
-        if (
-            mediaRecorder.current &&
-            mediaRecorder.current.state !== "inactive"
-        ) {
-            mediaRecorder.current.stop();
-            console.log(mediaRecorder.current.state);
+        isRecording.current = false;
+        if (recorder.current) {
+            console.log(recorder.current.getState());
+            recorder.current.stopRecording(() => {
+                console.log("stopping");
+            });
             console.log("Recorder stopped.");
         }
     };

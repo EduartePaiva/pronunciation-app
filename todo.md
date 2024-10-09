@@ -7,3 +7,5 @@
 
 [_] now I have to build realtime streaming, first add socketIo to it somehow, for this I'll create a branch in the project
 [_] let's try doing things slowly, first I'll try realtime phones translating, I could even offload to the client the leven distance task.
+
+[_] investigate the option of directly sending the array data
