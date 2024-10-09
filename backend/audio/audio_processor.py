@@ -1,3 +1,4 @@
+import tempfile
 from flask_socketio import SocketIO
 import torch
 import torchaudio
@@ -5,7 +6,9 @@ from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from typing import BinaryIO, Union
 import os
 import io
-import numpy
+import numpy as np
+
+import base64
 
 import queue
 import threading
@@ -117,33 +120,55 @@ class AudioChuck:
 
 class AudioChuckSimplified:
     def __init__(self, socket: SocketIO):
-        self.buffer = numpy.array([], dtype=numpy.float32)
-        self.sample_rate = 16000
+        self.buffer = np.array([], dtype=np.float32)
+        self.desired_sample_rate = 16000
+        self.original_sample_rate = 48000
         self.processing_queue = queue.Queue()
         self.processing_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.processing_thread.start() 
         self.socketio = socket
 
-    def add_audio(self, audio_data: bytes):
-        test = io.BytesIO(audio_data)
-        sound = AudioSegment.from_file_using_temporary_files(test, codec="opus", format="webm")
-        print("this is erroing")
+    def add_audio(self, message: str):
+        print("this executed1")
+        if message:
+            print('message received', len(message), type(message))
+            try:
+                if isinstance(message, str):
+                    message: bytes = base64.b64decode(message)
+                    print("new message type:", type(message))
+            except Exception as e:
+                print(e)
+        else:
+            return
+        
 
-        # resample to 16k
-        sound = sound.set_frame_rate(self.sample_rate)
-        # convert to mono
-        sound = sound.set_channels(1)
-        # get samples
-        audio_array = numpy.array(sound.get_array_of_samples(), dtype=numpy.float32)
-        # Normalize audio
-        audio_array = audio_array / numpy.max(numpy.abs(audio_array)) 
+        print("this executed2")
+        # with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_file:
+        #     temp_file.write(webm_bytes)
+        #     temp_file.flush()
+
+        waveform, sample_rate = torchaudio.load(io.BytesIO(message))
+
+        print("this executed2")
+        # # Resample if necessary
+        # if sample_rate != 16000:
+        #     resampler = torchaudio.transforms.Resample(sample_rate, 16000)
+        #     waveform = resampler(waveform)
+
+        # # Convert to mono if stereo
+        # if waveform.shape[0] > 1:
+        #     waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+        # Convert to np array
+        audio_array = waveform.squeeze().numpy()
+
         # concatenate audio
-        self.buffer = numpy.concatenate([self.buffer, audio_array])
+        self.buffer = np.concatenate([self.buffer, audio_array])
         # this is two second
-        if len(self.buffer) >= (self.sample_rate * 2):
+        if len(self.buffer) >= (self.desired_sample_rate * 2):
             print("this executed 3")
             self.processing_queue.put(self.buffer.copy())
-            self.buffer = numpy.array([], dtype=numpy.float32)
+            self.buffer = np.array([], dtype=np.float32)
 
     def _process_queue(self):
         while True:
