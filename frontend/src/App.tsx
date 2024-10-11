@@ -79,7 +79,8 @@ function App() {
 
     const useRecorderCB = (data: ArrayBuffer) => {
         if (socketRef.current?.connected) {
-            console.log("callback was executed!");
+            console.log("sending one second of data!!!");
+            console.log(data.byteLength);
             socketRef.current.emit("audio_stream", data);
         }
     };

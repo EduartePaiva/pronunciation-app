@@ -18,9 +18,8 @@ from typing import Union, List, Dict
 from phoneme.text_to_phoneme import text_to_phoneme
 from phoneme.speech_to_phoneme_2 import speech_to_phoneme_without_audio_processing
 from utils.levenshtein_distance import comparing_things
-from pydub import AudioSegment
+import resampy
 
-from werkzeug.datastructures import FileStorage
 
 
 class AudioChuck:
@@ -123,33 +122,39 @@ class AudioChuckSimplified:
         self.buffer = np.array([], dtype=np.float32)
         self.desired_sample_rate = 16000
         self.original_sample_rate = 48000
-        self.processing_queue = queue.Queue()
+        self.processing_queue = queue.Queue(maxsize=2)
         self.processing_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.processing_thread.start() 
         self.socketio = socket
 
-    def add_audio(self, message: str):
-        print("this executed1")
-        if message:
-            print('message received', len(message), type(message))
-            try:
-                if isinstance(message, str):
-                    message: bytes = base64.b64decode(message)
-                    print("new message type:", type(message))
-            except Exception as e:
-                print(e)
-        else:
-            return
+    def add_audio(self, binary_data: bytes):
+         # Convert binary data to numpy array of int16
+        # if message:
+        #     print('message received', len(message), type(message))
+        #     try:
+        #         if isinstance(message, str):
+        #             message: bytes = base64.b64decode(message)
+        #             print("new message type:", type(message))
+        #     except Exception as e:
+        #         print(e)
+        # else:
+        #     return
         
-
-        print("this executed2")
         # with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_file:
         #     temp_file.write(webm_bytes)
         #     temp_file.flush()
 
-        waveform, sample_rate = torchaudio.load(io.BytesIO(message))
+        # waveform, sample_rate = torchaudio.load(io.BytesIO(message))
 
-        print("this executed2")
+        int16_data = np.frombuffer(binary_data, dtype=np.int16)
+        # Convert int16 to float32 in range [-1.0, 1.0]
+        float32_data = int16_data.astype(np.float32) / 32768.0
+        # Resample the audio to 16000 Hz
+        resampled_audio = resampy.resample(
+            float32_data,
+            self.original_sample_rate,
+            self.desired_sample_rate
+        )
         # # Resample if necessary
         # if sample_rate != 16000:
         #     resampler = torchaudio.transforms.Resample(sample_rate, 16000)
@@ -160,13 +165,13 @@ class AudioChuckSimplified:
         #     waveform = torch.mean(waveform, dim=0, keepdim=True)
 
         # Convert to np array
-        audio_array = waveform.squeeze().numpy()
+        # audio_array = waveform.squeeze().numpy()
 
         # concatenate audio
-        self.buffer = np.concatenate([self.buffer, audio_array])
+        self.buffer = np.concatenate([self.buffer, resampled_audio])
         # this is two second
-        if len(self.buffer) >= (self.desired_sample_rate * 2):
-            print("this executed 3")
+        if len(self.buffer) >= (self.desired_sample_rate * 5):
+            print("processing phones")
             self.processing_queue.put(self.buffer.copy())
             self.buffer = np.array([], dtype=np.float32)
 
@@ -178,6 +183,8 @@ class AudioChuckSimplified:
             
             try:
                 spoken_phonemes = speech_to_phoneme_without_audio_processing(audio_data)
+                print("-----------------------__@@@@@@@@@@@@@@@@@@@@@@--------------------------")
+                print("spoken phones: ", spoken_phonemes)
                 self.socketio.emit('pronunciation_feedback', spoken_phonemes)
             
             except Exception as e:
