@@ -122,7 +122,7 @@ class AudioChuckSimplified:
         self.buffer = np.array([], dtype=np.float32)
         self.desired_sample_rate = 16000
         self.original_sample_rate = 48000
-        self.processing_queue = queue.Queue(maxsize=2)
+        self.processing_queue = queue.Queue(maxsize=3)
         self.processing_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.processing_thread.start() 
         self.socketio = socket
@@ -170,10 +170,15 @@ class AudioChuckSimplified:
         # concatenate audio
         self.buffer = np.concatenate([self.buffer, resampled_audio])
         # this is two second
-        if len(self.buffer) >= (self.desired_sample_rate * 5):
+        if len(self.buffer) >= (self.desired_sample_rate * 2):
+            print(len(self.buffer))
             print("processing phones")
             self.processing_queue.put(self.buffer.copy())
-            self.buffer = np.array([], dtype=np.float32)
+            # half a second is left in the buffer
+            cut = max(0, len(self.buffer) - 8000)
+            self.buffer = self.buffer[cut:]
+            print(len(self.buffer))
+            # self.buffer = np.array([], dtype=np.float32)
 
     def _process_queue(self):
         while True:

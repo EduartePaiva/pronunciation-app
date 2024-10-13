@@ -5,7 +5,7 @@
 [x] - then after that start detecting at the phoneme level
 [_] - then I'll start showing the silabas of phones that the person pronounced wrong. (phones would be easier, silabas I would have to map them to phones probably) 
 
-[_] now I have to build realtime streaming, first add socketIo to it somehow, for this I'll create a branch in the project
+[x] now I have to build realtime streaming, first add socketIo to it somehow, for this I'll create a branch in the project
 [_] let's try doing things slowly, first I'll try realtime phones translating, I could even offload to the client the leven distance task.
-
 [_] investigate the option of directly sending the array data
+[x] api for getting the phones of the text.

@@ -13,6 +13,8 @@ class RecorderWorkletProcessor extends AudioWorkletProcessor {
                 this.isRecording = true;
             } else if (e.data.command === "stop") {
                 this.isRecording = false;
+                this.times = 0;
+                this.oneSecondData = new Int16Array(48000);
             }
         };
     }
