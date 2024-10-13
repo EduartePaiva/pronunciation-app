@@ -14,6 +14,8 @@ import useRecorder2 from "./hooks/useRecorderAudioWorklet";
 interface UserText {
     words_sequence: string;
     result_sequence: number;
+    equivalent_phone?: string;
+    equals_phones?: boolean[];
 }
 
 const DEFAULT_THRESHOLD = 0.7;
@@ -25,6 +27,7 @@ function App() {
     const canvasParent = useRef<HTMLDivElement>(null);
     const [userText, setUserText] = useState<UserText[]>([]);
     const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
+    const phoneText = useRef("");
 
     //real time part
     const socketRef = useRef<TypedSocket | null>(null);
@@ -65,8 +68,6 @@ function App() {
     const handleTextAreaOnChange = (
         e: React.ChangeEvent<HTMLTextAreaElement>,
     ) => {
-        console.log(socketRef.current);
-
         const userText: UserText[] = e.target.value
             .split(" ")
             .map((words_sequence) => ({
@@ -89,11 +90,31 @@ function App() {
         sendCallback: useRecorderCB,
     });
 
-    const handleLock = () => {
+    const handleLock = async () => {
         if (lock) {
             setLock(false);
             return;
         }
+        const text = userText.map((x) => x.words_sequence).join(" ");
+        const form = new FormData();
+        form.append("text", text);
+        const result = await fetch(import.meta.env.VITE_BACKEND_URL, {
+            method: "POST",
+            body: form,
+        });
+        const phones = ((await result.json()).text_phone as string).split("|");
+        console.log("phones len: ", phones.length);
+        console.log("userText len: ", userText.length);
+        if (phones.length != userText.length) {
+            toast.error("the len of phones and words differ");
+            return;
+        }
+        for (let i = 0; i < phones.length; i++) {
+            userText[i].equivalent_phone = phones[i];
+        }
+
+        console.log(userText);
+        setUserText([...userText]);
         setLock(true);
     };
 
