@@ -27,7 +27,6 @@ function App() {
     const canvasParent = useRef<HTMLDivElement>(null);
     const [userText, setUserText] = useState<UserText[]>([]);
     const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
-    const phoneText = useRef("");
 
     //real time part
     const socketRef = useRef<TypedSocket | null>(null);
